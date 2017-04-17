@@ -1,0 +1,176 @@
+unit unProduto_Controller;
+
+interface
+
+uses
+  unModel, System.Classes, ZDataset, System.SysUtils;
+
+type
+  TProduto_DAO = class(TObject)
+  private
+    Produto_Load : TProduto;
+  public
+    function Consultar : TProduto;
+    function Novo(FProduto_New : TProduto) : String;
+    function Alterar(FProduto_Updated : TProduto) : String;
+    function Excluir : String;
+    constructor Create(vCodigo : Integer); reintroduce;
+  end;
+
+implementation
+
+uses
+  unDM;
+
+{ TProduto_DAO }
+
+function TProduto_DAO.Alterar(FProduto_Updated : TProduto) : String;
+var
+  vQRY : TZQuery;
+begin
+  vQRY := TZQuery.Create(nil);
+  try
+    vQRY.Connection := DM.zConexao;
+    vQRY.Close;
+    vQRY.SQL.Clear;
+    vQRY.SQL.Add('UPDATE PRODUTOS SET ');
+    vQRY.SQL.Add('DESCRICAO = ' + QuotedStr(FProduto_Updated.Descricao) + ',');
+    vQRY.SQL.Add('DATA_CADASTRO = ' + QuotedStr(FormatDateTime('yyyy-mm-dd', Now)) + ',');
+    vQRY.SQL.Add('ESTOQUE_MINIMO = ' + FloatToStr(FProduto_Updated.Estoque_Minimo) + ',');
+    vQRY.SQL.Add('ESTOQUE_MAXIMO = ' + FloatToStr(FProduto_Updated.Estoque_Maximo) + ',');
+    vQRY.SQL.Add('PRECO_CUSTO = ' + FloatToStr(FProduto_Updated.Preco_Custo) + ',');
+    vQRY.SQL.Add('PRECO_MAXIMO = ' + StringReplace(FloatToStr(FProduto_Updated.Preco_Venda),',','.', [rfReplaceAll]) + ' WHERE CODIGO = ' + IntToStr(Produto_Load.Codigo));
+    try
+      vQRY.ExecSQL;
+      Result := 'ok';
+    except
+      on E: Exception do
+      begin
+        Result := E.Message;
+      end;
+    end;
+  finally
+    vQRY.Free;
+  end;
+end;
+
+function TProduto_DAO.Consultar: TProduto;
+begin
+  Result := Produto_Load;
+end;
+
+constructor TProduto_DAO.Create(vCodigo : Integer);
+var
+  vQRY : TZQuery;
+begin
+
+  if vCodigo = -1 then
+  begin
+    Produto_Load := TProduto.Create;
+    Produto_Load.Codigo         := -1;
+    Produto_Load.Descricao      := '';
+    Produto_Load.Data_Cadastro  := 0;
+    Produto_Load.Estoque_Minimo := 0;
+    Produto_Load.Estoque_Maximo := 0;
+    Produto_Load.Preco_Custo    := 0;
+    Produto_Load.Preco_Venda    := 0;
+  end
+  else
+  begin
+
+    vQRY := TZQuery.Create(nil);
+
+    try
+      vQRY.Connection := DM.zConexao;
+      vQRY.Close;
+      vQRY.SQL.Clear;
+      vQRY.SQL.Add('SELECT * FROM PRODUTOS WHERE CODIGO = ' + IntToStr(vCodigo));
+      vQRY.Open;
+
+      if not vQRY.IsEmpty then
+      begin
+        Produto_Load := TProduto.Create;
+        Produto_Load.Codigo         := vQRY.FieldByName('CODIGO').AsInteger;
+        Produto_Load.Descricao      := vQRY.FieldByName('DESCRICAO').AsString;
+        Produto_Load.Data_Cadastro  := vQRY.FieldByName('DATA_CADASTRO').AsDateTime;
+        Produto_Load.Estoque_Minimo := vQRY.FieldByName('ESTOQUE_MINIMO').AsFloat;
+        Produto_Load.Estoque_Maximo := vQRY.FieldByName('ESTOQUE_MAXIMO').AsFloat;
+        Produto_Load.Preco_Custo    := vQRY.FieldByName('PRECO_CUSTO').AsFloat;
+        Produto_Load.Preco_Venda    := vQRY.FieldByName('PRECO_VENDA').AsFloat;
+      end
+      else
+      begin
+        Produto_Load := TProduto.Create;
+        Produto_Load.Codigo         := -1;
+        Produto_Load.Descricao      := '';
+        Produto_Load.Data_Cadastro  := 0;
+        Produto_Load.Estoque_Minimo := 0;
+        Produto_Load.Estoque_Maximo := 0;
+        Produto_Load.Preco_Custo    := 0;
+        Produto_Load.Preco_Venda    := 0;
+      end;
+
+    finally
+      vQRY.Free;
+    end;
+
+  end;
+
+end;
+
+function TProduto_DAO.Excluir : String;
+var
+  vQRY : TZQuery;
+begin
+  vQRY := TZQuery.Create(nil);
+  try
+    vQRY.Connection := DM.zConexao;
+    vQRY.Close;
+    vQRY.SQL.Clear;
+    vQRY.SQL.Add('DELETE FROM PRODUTOS WHERE CODIGO = ' + IntToStr(Produto_Load.Codigo));
+    try
+      vQRY.ExecSQL;
+      Result := 'ok';
+    except
+      on E: Exception do
+      begin
+        Result := E.Message;
+      end;
+    end;
+  finally
+    vQRY.Free;
+  end;
+end;
+
+function TProduto_DAO.Novo(FProduto_New : TProduto) : String;
+var
+  vQRY : TZQuery;
+begin
+  vQRY := TZQuery.Create(nil);
+  try
+    vQRY.Connection := DM.zConexao;
+    vQRY.Close;
+    vQRY.SQL.Clear;
+    vQRY.SQL.Add('INSERT INTO PRODUTOS (');
+    vQRY.SQL.Add(IntToStr(DM.seqProdutos) + ',');
+    vQRY.SQL.Add(QuotedStr(FProduto_New.Descricao) + ',');
+    vQRY.SQL.Add(QuotedStr(FormatDateTime('yyyy-mm-dd', Now)) + ',');
+    vQRY.SQL.Add(FloatToStr(FProduto_New.Estoque_Minimo) + ',');
+    vQRY.SQL.Add(FloatToStr(FProduto_New.Estoque_Maximo) + ',');
+    vQRY.SQL.Add(FloatToStr(FProduto_New.Preco_Custo) + ',');
+    vQRY.SQL.Add(FloatToStr(FProduto_New.Preco_Venda) + ')');
+    try
+      vQRY.ExecSQL;
+      Result := 'ok';
+    except
+      on E: Exception do
+      begin
+        Result := E.Message;
+      end;
+    end;
+  finally
+    vQRY.Free;
+  end;
+end;
+
+end.

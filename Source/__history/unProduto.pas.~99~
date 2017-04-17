@@ -1,0 +1,245 @@
+unit unProduto;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, ZDataset, Data.DB, ZAbstractRODataset,
+  ZAbstractDataset, ZAbstractTable, Vcl.StdCtrls, Vcl.Buttons, Vcl.ExtCtrls,
+  Vcl.Mask, Vcl.DBCtrls, ZSequence;
+
+type
+  TStatusTela = (stNovo, stAlterar, stExcluir);
+
+type
+  TfrmProduto = class(TForm)
+    pnlRodape: TPanel;
+    btnConfirmar: TBitBtn;
+    btnCancelar: TBitBtn;
+    Label1: TLabel;
+    Label2: TLabel;
+    Label3: TLabel;
+    Label4: TLabel;
+    Label5: TLabel;
+    Label6: TLabel;
+    Label7: TLabel;
+    lblStatusTela: TLabel;
+    edtCodigo: TEdit;
+    edtDescricao: TEdit;
+    edtDataCadastro: TEdit;
+    edtEstMinimo: TEdit;
+    edtEstMaximo: TEdit;
+    edtPrecoCusto: TEdit;
+    edtPrecoVenda: TEdit;
+    procedure btnCancelarClick(Sender: TObject);
+    procedure btnConfirmarClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    gCodigo        : Integer;
+    gStatusProduto : TStatusTela;
+    constructor Create(pAOwner : TComponent; pStatus : TStatusTela; pCodigo : Integer); reintroduce;
+  end;
+
+var
+  frmProduto: TfrmProduto;
+
+implementation
+
+uses
+  unDM, unCadastro, unModel, unProduto_Controller;
+
+{$R *.dfm}
+
+{ TfrmProduto }
+
+
+{ TfrmProduto }
+
+procedure TfrmProduto.btnCancelarClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TfrmProduto.btnConfirmarClick(Sender: TObject);
+var
+  vProduto     : TProduto;
+  vProduto_DAO : TProduto_DAO;
+begin
+
+  if edtCodigo.Text = '' then
+  begin
+    ShowMessage('Código obrigatório!');
+    Exit;
+  end;
+
+  if edtCodigo.Text = '' then
+  begin
+    ShowMessage('Descrição obrigatório!');
+    Exit;
+  end;
+
+
+  case gStatusProduto of
+
+    stNovo:
+    begin
+      {Gravar}
+      try
+
+        vProduto := TProduto.Create;
+        vProduto.Descricao      := edtDescricao.Text;
+        vProduto.Estoque_Minimo := StrToFloat(edtEstMinimo.Text);
+        vProduto.Estoque_Maximo := StrToFloat(edtEstMaximo.Text);
+        vProduto.Preco_Custo    := StrToFloat(edtPrecoCusto.Text);
+        vProduto.Preco_Venda    := StrToFloat(edtPrecoVenda.Text);
+
+        vProduto_DAO := TProduto_DAO.Create(-1);
+        if vProduto_DAO.Novo(vProduto) = 'ok' then
+          ShowMessage('Produto inserido com sucesso!')
+        else
+          ShowMessage('FALHA ao inserido o produto!');
+
+        frmCadastroDeProdutos.zqryProdutos.Refresh;
+        Close;
+
+      finally
+        vProduto.Free;
+        vProduto_DAO.Free;
+      end;
+    end;
+    stAlterar:
+    begin
+      {Gravar}
+      try
+
+        vProduto := TProduto.Create;
+        vProduto.Descricao      := edtDescricao.Text;
+        vProduto.Estoque_Minimo := StrToFloat(edtEstMinimo.Text);
+        vProduto.Estoque_Maximo := StrToFloat(edtEstMaximo.Text);
+        vProduto.Preco_Custo    := StrToFloat(edtPrecoCusto.Text);
+        vProduto.Preco_Venda    := StrToFloat(edtPrecoVenda.Text);
+
+        vProduto_DAO := TProduto_DAO.Create(StrToInt(edtCodigo.Text));
+        vProduto_DAO.Alterar(vProduto);
+
+        frmCadastroDeProdutos.zqryProdutos.Refresh;
+        Close;
+
+      finally
+        vProduto.Free;
+        vProduto_DAO.Free;
+      end;
+    end;
+    stExcluir:
+    begin
+      {Excluir}
+      if MessageBox(Handle, 'Deseja realmente deletar este registro?', 'Favor confirmar...', MB_YESNO + MB_SYSTEMMODAL + MB_ICONQUESTION + MB_DEFBUTTON1) = mrYes then
+      begin
+        try
+
+          vProduto_DAO := TProduto_DAO.Create(StrToInt(edtCodigo.Text));
+          vProduto_DAO.Excluir;
+
+          frmCadastroDeProdutos.zqryProdutos.Refresh;
+          Close;
+
+        finally
+          vProduto_DAO.Free;
+        end;
+      end;
+    end;
+  end;
+
+end;
+
+constructor TfrmProduto.Create(pAOwner : TComponent; pStatus: TStatusTela; pCodigo: Integer);
+begin
+  inherited Create(pAOwner);
+  gStatusProduto := pStatus;
+  gCodigo        := pCodigo;
+end;
+
+procedure TfrmProduto.FormShow(Sender: TObject);
+var
+  vProduto     : TProduto;
+  vProduto_DAO : TProduto_DAO;
+begin
+
+  case gStatusProduto of
+
+    stNovo:
+    begin
+      lblStatusTela.Caption := 'Novo Registro';
+
+      {Não traz registros pois se trata de cadastro}
+      edtCodigo.Text := IntToStr(DM.seqProdutos);
+      edtDescricao.Clear;
+      edtDataCadastro.Clear;
+      edtEstMinimo.Clear;
+      edtEstMaximo.Clear;
+      edtPrecoCusto.Clear;
+      edtPrecoVenda.Clear;
+      edtDescricao.SetFocus;
+    end;
+    stAlterar:
+    begin
+      lblStatusTela.Caption := 'Alteração de Registro';
+
+      {Traz o registro selecionado}
+      try
+
+        vProduto_DAO := TProduto_DAO.Create(gCodigo);
+        edtCodigo.Text       := IntToStr(vProduto_DAO.Consultar.Codigo);
+        edtDescricao.Text    := vProduto_DAO.Consultar.Descricao;
+        edtDataCadastro.Text := DateToStr(vProduto_DAO.Consultar.Data_Cadastro);
+        edtEstMinimo.Text    := FloatToStr(vProduto_DAO.Consultar.Estoque_Minimo);
+        edtEstMaximo.Text    := FloatToStr(vProduto_DAO.Consultar.Estoque_Maximo);
+        edtPrecoCusto.Text   := FloatToStr(vProduto_DAO.Consultar.Preco_Custo);
+        edtPrecoVenda.Text   := FloatToStr(vProduto_DAO.Consultar.Preco_Venda);
+
+        frmCadastroDeProdutos.zqryProdutos.Refresh;
+        Close;
+
+      finally
+        vProduto_DAO.Free;
+      end;
+
+      edtDescricao.SetFocus;
+
+    end;
+    stExcluir:
+    begin
+      lblStatusTela.Caption := 'Exclusão de Registro';
+
+      {Traz o registro selecionado}
+      try
+
+        vProduto_DAO := TProduto_DAO.Create(gCodigo);
+        with vProduto_DAO do
+        begin
+          edtCodigo.Text       := IntToStr(Consultar.Codigo);
+          edtDescricao.Text    := Consultar.Descricao;
+          edtDataCadastro.Text := DateToStr(Consultar.Data_Cadastro);
+          edtEstMinimo.Text    := FloatToStr(Consultar.Estoque_Minimo);
+          edtEstMaximo.Text    := FloatToStr(Consultar.Estoque_Maximo);
+          edtPrecoCusto.Text   := FloatToStr(Consultar.Preco_Custo);
+          edtPrecoVenda.Text   := FloatToStr(Consultar.Preco_Venda);
+        end;
+
+        frmCadastroDeProdutos.zqryProdutos.Refresh;
+        Close;
+
+      finally
+        vProduto_DAO.Free;
+      end;
+
+      edtDescricao.SetFocus;
+
+    end;
+  end;
+
+end;
+
+end.
